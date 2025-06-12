@@ -1,14 +1,10 @@
-# IITISoC-25-IVR0xx PS Title
+# IITISoC-25-IVR003: RFID-Based Machine Logging and Access Control System
 
 Team Members
 
-_**Team Member 1**:  [@user1](https://github.com/user1)_
+_**Team Member 1**:  [@DhruvB11]([https://github.com/DhruvB11])_
 
-_**Team Member 2**:  [@user2](https://github.com/user2)_
-
-_**Team Member 3**:  [@user3](https://github.com/user3)_
-
-_**Team Member 4**:  [@user4](https://github.com/user4)_
+_**Team Member 2**:  [@athrvchavan]([https://github.com/user2](https://github.com/athrvchavan))_
 
 Mentors
 
