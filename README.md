@@ -2,9 +2,9 @@
 
 Team Members
 
-_**Team Member 1**:  [@DhruvB11]([https://github.com/DhruvB11])_
+_**Team Member 1**:  [@DhruvB11](https://github.com/DhruvB11)_
 
-_**Team Member 2**:  [@athrvchavan]([https://github.com/athrvchavan])_
+_**Team Member 2**:  [@athrvchavan](https://github.com/athrvchavan)_
 
 Mentors
 
