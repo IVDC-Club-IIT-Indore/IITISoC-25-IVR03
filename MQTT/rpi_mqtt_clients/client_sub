@@ -1,0 +1,59 @@
+import paho.mqtt.client as mqtt
+import time
+
+# Change this line! Add 'properties' as the 5th argument.
+def on_connect(client, userdata, flags, rc, properties):
+    global flag_connected
+    if rc == 0:
+        flag_connected = 1
+        client_subscriptions(client)
+        print("Connected to MQTT server successfully!")
+    else:
+        flag_connected = 0
+        print(f"Failed to connect, return code {rc}\n")
+
+def on_disconnect(client, userdata, rc):
+    global flag_connected
+    flag_connected = 0
+    print(f"Disconnected from MQTT server with result code {rc}")
+
+def callback_esp32_sensor1(client, userdata, msg):
+    print('ESP sensor1 data: ', msg.payload.decode('utf-8'))
+
+def callback_esp32_sensor2(client, userdata, msg):
+    print('ESP sensor2 data: ', str(msg.payload.decode('utf-8')))
+
+def callback_rpi_broadcast(client, userdata, msg):
+    print('RPi Broadcast message:  ', str(msg.payload.decode('utf-8')))
+
+def client_subscriptions(client):
+    # For VERSION2, subscriptions can also be done inside on_connect for robustness
+    # Make sure your topic patterns are correct
+    client.subscribe("esp32/#")
+    client.subscribe("rpi/broadcast")
+    print("Subscriptions made.")
+
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, "rpi_client1")
+flag_connected = 0
+
+client.on_connect = on_connect
+client.on_disconnect = on_disconnect
+# Add message_callback_add for each topic.
+# Note: For VERSION2, on_message also has a slightly different signature if used directly
+# but message_callback_add handles the per-topic callbacks correctly.
+client.message_callback_add('esp32/sensor1', callback_esp32_sensor1)
+client.message_callback_add('esp32/sensor2', callback_esp32_sensor2)
+client.message_callback_add('rpi/broadcast', callback_rpi_broadcast)
+
+print("Attempting to connect to MQTT broker at 127.0.0.1:1883...")
+client.connect('127.0.0.1', 1883, 60) # Added keepalive 60 seconds
+
+client.loop_start()
+print("......client setup complete............")
+
+while True:
+    time.sleep(4)
+    if (flag_connected != 1):
+        print("trying to connect MQTT server.. (flag_connected is not 1)")
+    else:
+        print("Client is connected.")
