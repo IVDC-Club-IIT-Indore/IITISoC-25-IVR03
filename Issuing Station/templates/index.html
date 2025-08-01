@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID Card Issuing Station</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            cursor: none; /* Hide cursor for kiosk mode */
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+            width: 90vw;
+            max-width: 800px;
+            height: 90vh;
+            max-height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4CAF50;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.offline {
+            background: #f44336;
+            box-shadow: 0 0 20px rgba(244, 67, 54, 0.6);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .card-animation {
+            width: 150px;
+            height: 95px;
+            background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+            border-radius: 12px;
+            margin-bottom: 30px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .card-animation::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            width: 30px;
+            height: 25px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .card-animation::after {
+            content: 'RFID';
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .instruction-text {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        .sub-text {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        .input-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .input-field {
+            font-size: 2.5em;
+            padding: 20px 30px;
+            border: 4px solid #ddd;
+            border-radius: 16px;
+            text-align: center;
+            margin-bottom: 40px;
+            width: 350px;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .input-field:focus {
+            border-color: #4a90e2;
+            box-shadow: 0 0 30px rgba(74, 144, 226, 0.4);
+            transform: scale(1.02);
+        }
+
+        .input-field.roll-input {
+            letter-spacing: 3px;
+        }
+
+        .input-field.pin-input {
+            letter-spacing: 8px;
+        }
+
+        .input-instructions {
+            font-size: 1.1em;
+            color: #777;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 400px;
+            line-height: 1.4;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 18px 35px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.4em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            min-width: 120px;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #ff6b6b, #ff5252);
+            color: white;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 30px;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            width: 0%;
+            transition: width 2s ease;
+        }
+
+        .message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 16px;
+            font-size: 1.5em;
+            z-index: 1000;
+            display: none;
+        }
+
+        .message.error {
+            background: rgba(244, 67, 54, 0.9);
+        }
+
+        .message.success {
+            background: rgba(76, 175, 80, 0.9);
+        }
+
+        .logo-container {
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            max-width: 200px;
+            max-height: 150px;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .show {
+            display: flex !important;
+        }
+
+        /* User Details Styling */
+        .user-details {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            text-align: left;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            font-size: 1.1em;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .detail-value {
+            color: #666;
+        }
+
+        .machines-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .machine-tag {
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .loading {
+            opacity: 0.7;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4a90e2;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>RFID Card Station</h1>
+            <div class="status-indicator" id="statusIndicator"></div>
+        </div>
+
+        <div class="main-content" id="mainContent">
+            <!-- Welcome Screen -->
+            <div id="welcomeScreen">
+                <div class="logo-container">
+                    <img src="logo.jpeg" alt="TL IITI" class="logo" id="logoImage">
+                </div>
+                <div class="card-animation"></div>
+                <div class="instruction-text">Insert Card</div>
+                <div class="sub-text">Please insert your RFID card into the reader</div>
+            </div>
+
+            <!-- Roll Number Entry Screen -->
+            <div id="rollScreen" class="input-container">
+                <div class="instruction-text">Enter Roll Number</div>
+                <div class="input-instructions">Use the numpad to enter your roll number, then press Enter</div>
+                <input type="text" class="input-field roll-input" id="rollInput" maxlength="15" placeholder="e.g., 2021001" autocomplete="off" autofocus>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="confirmRoll()" id="confirmRollBtn">Confirm</button>
+                    <button class="btn btn-secondary" onclick="cancelOperation()">Cancel</button>
+                </div>
+            </div>
+
+            <!-- PIN Entry Screen -->
+            <div id="pinScreen" class="input-container">
+                <div class="instruction-text" id="pinInstruction">Enter your 4-digit PIN</div>
+                <div class="input-instructions">Use the numpad to enter your PIN, then press Enter</div>
+                <input type="password" class="input-field pin-input" id="pinInput" maxlength="4" autocomplete="off" autofocus>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="confirmPin()" id="confirmPinBtn">Confirm</button>
+                    <button class="btn btn-secondary" onclick="cancelOperation()">Cancel</button>
+                </div>
+            </div>
+
+            <!-- User Details Screen -->
+            <div id="detailsScreen" class="hidden">
+                <div class="instruction-text">User Details</div>
+                <div class="user-details" id="userDetails">
+                    <div class="detail-row">
+                        <span class="detail-label">Name:</span>
+                        <span class="detail-value" id="userName">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Branch:</span>
+                        <span class="detail-value" id="userBranch">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Year:</span>
+                        <span class="detail-value" id="userYear">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Accessible Machines:</span>
+                        <div class="machines-list" id="accessibleMachines">
+                            <!-- Machine list will be populated here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="writeToCard()" id="writeCardBtn">Write to Card</button>
+                    <button class="btn btn-secondary" onclick="cancelOperation()">Cancel</button>
+                </div>
+            </div>
+
+            <!-- Writing Progress Screen -->
+            <div id="writingScreen" class="hidden">
+                <div class="instruction-text">Writing to Card...</div>
+                <div class="sub-text">Please do not remove the card</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="message" id="messageBox"></div>
+
+    <script>
+        let currentState = 'welcome';
+        let currentPin = '';
+        let currentRoll = '';
+        let cardId = '';
+        let userData = null;
+        let isLoading = false;
+
+        // API Configuration
+        const API_BASE_URL = '/api';
+        const API_TIMEOUT = 10000; // 10 seconds
+
+        // Utility function for API calls with timeout and error handling
+        async function apiCall(url, options = {}) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                clearTimeout(timeoutId);
+                
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timeout');
+                }
+                
+                updateSystemStatus(false);
+                throw error;
+            }
+        }
+
+        // Update system status indicator
+        function updateSystemStatus(isOnline) {
+            const indicator = document.getElementById('statusIndicator');
+            if (isOnline) {
+                indicator.classList.remove('offline');
+            } else {
+                indicator.classList.add('offline');
+            }
+        }
+
+        // API Functions
+        async function checkCardStatus() {
+            try {
+                const data = await apiCall(`${API_BASE_URL}/card_status`);
+                updateSystemStatus(true);
+                return data;
+            } catch (error) {
+                console.error('Card status check failed:', error);
+                showMessage('Card reader error. Please try again.', 3000, 'error');
+                throw error;
+            }
+        }
+
+        async function checkUserInDatabase(rollNumber) {
+            try {
+                setLoading(true);
+                const data = await apiCall(`${API_BASE_URL}/check_user`, {
+                    method: 'POST',
+                    body: JSON.stringify({roll_number: rollNumber})
+                });
+                updateSystemStatus(true);
+                return data;
+            } catch (error) {
+                console.error('User check failed:', error);
+                showMessage('Unable to verify user. Please try again.', 3000, 'error');
+                throw error;
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function verifyUserPin(rollNumber, pin) {
+            try {
+                setLoading(true);
+                const data = await apiCall(`${API_BASE_URL}/verify_pin`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        roll_number: rollNumber,
+                        pin: pin
+                    })
+                });
+                updateSystemStatus(true);
+                return data;
+            } catch (error) {
+                console.error('PIN verification failed:', error);
+                showMessage('PIN verification failed. Please try again.', 3000, 'error');
+                throw error;
+            } finally {
+                setLoading(false);
+            }
+        }
+
+    async function writeCardData(rollNumber) {
+        try {
+            setLoading(true);
+            const data = await apiCall(`${API_BASE_URL}/write_card`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    roll_number: rollNumber  // Only send roll_number
+                })
+            });
+            updateSystemStatus(true);
+            return data;
+        } catch (error) {
+            console.error('Card write failed:', error);
+            showMessage('Card writing failed. Please try again.', 3000, 'error');
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+        // Loading state management
+        function setLoading(loading) {
+            isLoading = loading;
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                btn.disabled = loading;
+            });
+            
+            if (loading) {
+                document.getElementById('mainContent').classList.add('loading');
+            } else {
+                document.getElementById('mainContent').classList.remove('loading');
+            }
+        }
+
+        function showRollScreen() {
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('rollScreen').style.display = 'flex';
+            currentState = 'roll';
+            currentRoll = '';
+            const rollInput = document.getElementById('rollInput');
+            rollInput.value = '';
+            rollInput.focus();
+        }
+
+        async function confirmRoll() {
+            currentRoll = document.getElementById('rollInput').value.trim();
+
+            if (currentRoll.length === 9) {
+                try {
+                    showMessage('Checking roll number...', 1500);
+                    const userCheck = await checkUserInDatabase(currentRoll);
+                    
+                    if (userCheck.exists) {
+                        showPinScreen('Enter your PIN');
+                    } else {}
+                } catch (error) {
+                    document.getElementById('rollInput').focus();
+                }
+            } else {
+                showMessage('Please enter a valid roll number', 2000, 'error');
+                document.getElementById('rollInput').focus();
+            }
+        }
+
+        function showPinScreen(instruction) {
+            document.getElementById('rollScreen').style.display = 'none';
+            document.getElementById('pinScreen').style.display = 'flex';
+            document.getElementById('pinInstruction').textContent = instruction;
+            currentState = 'pin';
+            currentPin = '';
+            const pinInput = document.getElementById('pinInput');
+            pinInput.value = '';
+            pinInput.focus();
+        }
+
+        async function confirmPin() {
+            currentPin = document.getElementById('pinInput').value;
+            
+            if (currentPin.length === 4) {
+                try {
+                    await verifyPinAndFetchDetails();
+                } catch (error) {
+                    const pinInput = document.getElementById('pinInput');
+                    pinInput.value = '';
+                    pinInput.focus();
+                }
+            } else {
+                showMessage('Please enter a 4-digit PIN', 2000, 'error');
+                document.getElementById('pinInput').focus();
+            }
+        }
+
+    async function verifyPinAndFetchDetails() {
+        try {
+            showMessage('Verifying PIN...', 1500);
+            const pinResult = await verifyUserPin(currentRoll, currentPin);
+            
+            if (pinResult.valid) {
+                userData = pinResult.user_data;  // Use data directly from PIN verification
+                showUserDetails();
+            } else {
+                showMessage('Incorrect PIN. Please try again.', 3000, 'error');
+                const pinInput = document.getElementById('pinInput');
+                pinInput.value = '';
+                pinInput.focus();
+            }
+        } catch (error) {
+            // Error already handled in API functions
+        }
+    }
+
+        function showUserDetails() {
+            document.getElementById('pinScreen').style.display = 'none';
+            document.getElementById('detailsScreen').classList.remove('hidden');
+            currentState = 'details';
+            
+            // Populate user details
+            document.getElementById('userName').textContent = userData.name || '-';
+            document.getElementById('userBranch').textContent = userData.branch || '-';
+            document.getElementById('userYear').textContent = userData.year || '-';
+            
+            // Populate accessible machines
+            const machinesContainer = document.getElementById('accessibleMachines');
+            machinesContainer.innerHTML = '';
+
+            if (userData.accessible_machines && userData.accessible_machines.length > 0) {
+                userData.accessible_machines.forEach(machine => {
+                    const tag = document.createElement('div');
+                    tag.className = 'machine-tag';
+                    tag.textContent = machine;
+                    machinesContainer.appendChild(tag);
+                });
+            } else {
+                const noMachines = document.createElement('div');
+                noMachines.textContent = 'No machines assigned';
+                noMachines.style.color = '#999';
+                machinesContainer.appendChild(noMachines);
+            }
+        }
+
+        async function writeToCard() {
+            try {
+                document.getElementById('detailsScreen').classList.add('hidden');
+                document.getElementById('writingScreen').classList.remove('hidden');
+                currentState = 'writing';
+                
+                const progressFill = document.getElementById('progressFill');
+                document.querySelector('.progress-bar').style.display = 'block';
+                progressFill.style.width = '100%';
+                
+                const writeResult = await writeCardData(cardId, currentRoll, userData);
+                
+                if (writeResult.success) {
+                    showMessage('Card written successfully!', 3000, 'success');
+                } else {
+                    showMessage('Card writing failed. Please try again.', 3000, 'error');
+                }
+                
+                setTimeout(resetToWelcome, 3000);
+            } catch (error) {
+                setTimeout(resetToWelcome, 2000);
+            }
+        }
+
+        function cancelOperation() {
+            resetToWelcome();
+        }
+
+        function resetToWelcome() {
+            document.getElementById('rollScreen').style.display = 'none';
+            document.getElementById('pinScreen').style.display = 'none';
+            document.getElementById('detailsScreen').classList.add('hidden');
+            document.getElementById('writingScreen').classList.add('hidden');
+            document.getElementById('welcomeScreen').style.display = 'block';
+            document.querySelector('.progress-bar').style.display = 'none';
+            document.getElementById('progressFill').style.width = '0%';
+            currentState = 'welcome';
+            currentPin = '';
+            currentRoll = '';
+            cardId = '';
+            userData = null;
+            setLoading(false);
+        }
+
+        function showMessage(text, duration, type = 'info') {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = text;
+            messageBox.className = `message ${type}`;
+            messageBox.style.display = 'block';
+            
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, duration);
+        }
+
+        // Keyboard event handlers
+        document.addEventListener('keydown', function(event) {
+            if (isLoading) return;
+            
+            if (currentState === 'roll') {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    confirmRoll();
+                } else if (event.key === 'Escape') {
+                    cancelOperation();
+                }
+            } else if (currentState === 'pin') {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    confirmPin();
+                } else if (event.key === 'Escape') {
+                    cancelOperation();
+                }
+            }
+        });
+
+        // Auto-reset after inactivity (5 minutes)
+        let inactivityTimer;
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+                if (currentState !== 'welcome') {
+                    resetToWelcome();
+                }
+            }, 300000); // 5 minutes
+        }
+
+        // Add event listeners for user activity
+        document.addEventListener('click', resetInactivityTimer);
+        document.addEventListener('keydown', resetInactivityTimer);
+        document.addEventListener('touchstart', resetInactivityTimer);
+
+        // Initialize system status check
+        async function initializeSystem() {
+            try {
+                await checkCardStatus();
+                updateSystemStatus(true);
+            } catch (error) {
+                updateSystemStatus(false);
+                console.warn('System initialization failed, running in offline mode');
+            }
+        }
+
+        // Real card detection polling
+    setInterval(async () => {
+        if (currentState === 'welcome' && !isLoading) {
+            try {
+                const cardStatus = await checkCardStatus();
+                if (cardStatus.detected && cardStatus.card_id) {
+                    cardId = cardStatus.card_id;
+                    showMessage('Card detected! Please enter details...', 2000);
+                    setTimeout(() => {
+                        showRollScreen();
+                    }, 1500);
+                }
+            } catch (error) {
+                // Error already handled in checkCardStatus
+            }
+        }
+    }, 1000); // Check every second
+        // Initialize
+        resetInactivityTimer();
+        initializeSystem();
+    </script>
+</body>
+</html>
