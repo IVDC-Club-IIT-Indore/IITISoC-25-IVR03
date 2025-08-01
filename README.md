@@ -39,7 +39,7 @@ This system consists of four main components:
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 
-## 🔧 System Components
+##  System Components
 
 ### 1. Issuing Station
 **Location**: `Issuing Station/`
